@@ -1,177 +1,47 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>통제대 일일 휴가자 추출 툴 (연속휴가 병합)</title>
-    <style>
-        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f7f6; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
-        .flex-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
-        h2 { color: #2c3e50; margin: 0; }
-        .date-picker { font-size: 16px; padding: 8px; border: 2px solid #3498db; border-radius: 4px; font-weight: bold; color: #d35400; width: 50px; text-align: center; }
-        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; font-family: 'Malgun Gothic'; white-space: pre; }
-        .main-btn { background-color: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin: 15px 0; }
-        .main-btn:hover { background-color: #2ecc71; }
-        .result-container { width: 100%; padding: 10px; border: 1px solid #3498db; background-color: #f4faff; box-sizing: border-box; overflow-x: auto; min-height: 100px; display: flex; align-items: center; justify-content: center; color: #7f8c8d; }
-        table { border-collapse: collapse; width: 100%; background: white; }
-        td { border: 1px solid #bdc3c7; padding: 10px; vertical-align: top; font-size: 13px; min-width: 90px; text-align: center; line-height: 1.2; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="flex-header">
-        <h2>🌴 통제대 일일 휴가자 추출기 (연속휴가 병합)</h2>
-        <div>
-            <label><b>조회 날짜: </b></label>
-            <input type="number" id="targetMonth" class="date-picker" min="1" max="12"> 월
-            <input type="number" id="targetDay" class="date-picker" min="1" max="31"> 일
-        </div>
-    </div>
-    
-    <label><b>📥 엑셀 데이터 원본 (팀 구분 없이 싹 다 드래그해서 붙여넣기):</b></label>
-    <textarea id="inputData" placeholder="1열 직급, 2열 이름, 3열부터 날짜가 시작되는 달력 데이터를 복붙하세요."></textarea>
-
-    <button class="main-btn" onclick="processLeave()">가로 12칸 (보고서 포맷) 추출 🚀</button>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-        <label><b>📋 출력 결과:</b></label>
-        <button onclick="copyResult()" style="padding: 5px 15px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 3px; font-weight: bold;">📋 표 통째로 복사하기</button>
-    </div>
-    
-    <div id="outputContainer" class="result-container">
-        결과가 여기에 실제 표(Table) 형태로 나타납니다.
-    </div>
-</div>
-
+<input id="M" size="2">월 <input id="D" size="2">일
+<button onclick="X()">조회+복사</button><br>
+<textarea id="I" cols="80" rows="10"></textarea>
+<div id="O"></div>
 <script>
-    const today = new Date();
-    document.getElementById("targetMonth").value = today.getMonth() + 1;
-    document.getElementById("targetDay").value = today.getDate();
-
-    const validLeaveTypes = ["휴", "포휴", "연가", "공가", "위로"];
+M.value=new Date().getMonth()+1; D.value=new Date().getDate();
+function X(){
+    let m=M.value, d=+D.value, t=0, b=0, v=["휴","포휴","연가","공가","위로"];
+    let R={1:{},2:{},3:{},4:{}};
+    for(let i=1;i<5;i++) R[i]={"사":[],"준":[],"부":[]};
     
-    const rankTypeMap = {
-        "대위": "사관", "중위": "사관", "소위": "사관",
-        "대위(진)": "사관", "중위(진)": "사관", "소위(진)": "사관",
-        "준위": "준사관",
-        "원사": "부사관", "원사(진)": "부사관", 
-        "상사": "부사관", "상사(진)": "부사관", 
-        "중사": "부사관", "중사(진)": "부사관", 
-        "하사": "부사관", "하사(진)": "부사관"
-    };
-
-    function processLeave() {
-        const rawText = document.getElementById("inputData").value;
-        const targetMonth = document.getElementById("targetMonth").value;
-        const targetDay = parseInt(document.getElementById("targetDay").value, 10);
+    I.value.split('\n').forEach(L=>{
+        let c=L.split('\t').map(x=>x.trim());
+        if(c.length<2) return;
+        let r=c[0], n=c[1], k="";
         
-        if (!rawText.trim()) { alert("엑셀 데이터를 먼저 붙여넣어 주세요."); return; }
-
-        const results = {
-            1: { "사관": [], "준사관": [], "부사관": [] },
-            2: { "사관": [], "준사관": [], "부사관": [] },
-            3: { "사관": [], "준사관": [], "부사관": [] },
-            4: { "사관": [], "준사관": [], "부사관": [] }
-        };
-
-        const lines = rawText.split("\n");
-        let currentTeam = 0;
-        let isPersonBlock = false;
-
-        for (let line of lines) {
-            let cells = line.split("\t").map(s => s.trim());
-            if (cells.length < 2) continue;
-
-            let rank = cells[0];
-            let name = cells[1];
-            let type = rankTypeMap[rank];
-
-            if (!type) { isPersonBlock = false; continue; }
-            if (!isPersonBlock) { currentTeam++; isPersonBlock = true; }
-            if (currentTeam > 4) break;
-
-            let dayIndex = targetDay + 1;
-
-            if (cells.length > dayIndex) {
-                let leaveVal = cells[dayIndex];
-                
-                // 오늘 날짜에 지정된 휴가(휴, 포휴 등)가 있다면
-                if (validLeaveTypes.includes(leaveVal)) {
-                    
-                    // ⭐️ 연속 휴가 추적 로직 시작 ⭐️
-                    let startDay = targetDay;
-                    let endDay = targetDay;
-
-                    // 1. 과거로 거슬러 올라가며 같은 휴가인지 확인
-                    for (let d = targetDay - 1; d >= 1; d--) {
-                        let idx = d + 1;
-                        if (cells.length > idx && cells[idx] === leaveVal) {
-                            startDay = d; // 같은 휴가면 시작일을 앞당김
-                        } else {
-                            break; // 다른 글자나 빈칸이 나오면 추적 중지
-                        }
-                    }
-
-                    // 2. 미래로 전진하며 같은 휴가인지 확인
-                    for (let d = targetDay + 1; d <= 31; d++) {
-                        let idx = d + 1;
-                        if (cells.length > idx && cells[idx] === leaveVal) {
-                            endDay = d; // 같은 휴가면 종료일을 늦춤
-                        } else {
-                            break; // 다른 글자나 빈칸이 나오면 추적 중지
-                        }
-                    }
-
-                    // ⭐️ 출력 포맷 조립 ⭐️
-                    let infoBlocks = [];
-                    infoBlocks.push(`${rank} ${name}`); // 직급 이름
-                    
-                    if (leaveVal !== "휴") {
-                        infoBlocks.push(`(${leaveVal})`); // '휴'가 아닐 때만 종류 표시
-                    }
-                    
-                    // 날짜 표시 (시작일과 종료일이 같으면 하루, 다르면 물결표시 병합)
-                    if (startDay === endDay) {
-                        infoBlocks.push(`(${targetMonth}.${startDay}.)`);
-                    } else {
-                        infoBlocks.push(`(${targetMonth}.${startDay}.~${endDay}.)`);
-                    }
-                    
-                    let personString = infoBlocks.join("<br><br>");
-                    results[currentTeam][type].push(personString);
-                }
-            }
+        if(r.includes("준위")) k="준";
+        else if(r.includes("위")) k="사";
+        else if(r.includes("사")) k="부";
+        
+        if(!k){ b=0; return; }
+        if(!b){ t++; b=1; }
+        if(t>4) return;
+        
+        let lv=c[d+1];
+        if(v.includes(lv)){
+            let S=d, E=d;
+            for(let x=d-1; x>0 && c[x+1]==lv; x--) S=x;
+            for(let x=d+1; x<32 && c[x+1]==lv; x++) E=x;
+            let dt = S==E ? `(${m}.${S}.)` : `(${m}.${S}.~${E}.)`;
+            R[t][k].push(`${r} ${n}<br><br>`+(lv=="휴"?"":`(${lv})<br><br>`)+dt);
         }
-
-        let tableHTML = "<table id='outputTable'><tr>";
-        for (let t = 1; t <= 4; t++) {
-            ["사관", "준사관", "부사관"].forEach(type => {
-                let cellText = results[t][type].join("<br><br><br>");
-                tableHTML += `<td>${cellText}</td>`;
-            });
-        }
-        tableHTML += "</tr></table>";
-        
-        document.getElementById("outputContainer").innerHTML = tableHTML;
-    }
-
-    function copyResult() {
-        const table = document.getElementById("outputTable");
-        if (!table) return;
-
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(table);
-        
-        selection.removeAllRanges();
-        selection.addRange(range);
-        document.execCommand("copy");
-        selection.removeAllRanges(); 
-        
-        alert("표 복사 완료!\n엑셀에 붙여넣으세요.");
-    }
+    });
+    
+    let h="<table id='T' border='1'><tr>";
+    for(let i=1;i<5;i++) ["사","준","부"].forEach(k=>{
+        h+=`<td valign='top'>${R[i][k].join("<br><br><br>")}</td>`;
+    });
+    O.innerHTML = h+"</tr></table>";
+    
+    let s=getSelection(), rg=document.createRange();
+    rg.selectNodeContents(T);
+    s.removeAllRanges(); s.addRange(rg);
+    document.execCommand("copy");
+    alert("복사완료! 엑셀 1열에 붙여넣으세요.");
+}
 </script>
-
-</body>
-</html>
