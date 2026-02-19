@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>통제대 일일 휴가자 자동 추출 툴 (최종본)</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+        .flex-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+        h2 { color: #2c3e50; margin: 0; }
+        .date-picker { font-size: 16px; padding: 8px; border: 2px solid #3498db; border-radius: 4px; font-weight: bold; color: #d35400; width: 60px; text-align: center; }
+        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; font-family: 'Malgun Gothic'; }
+        .main-btn { background-color: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin: 15px 0; }
+        .main-btn:hover { background-color: #2ecc71; }
+        .result-area { width: 100%; height: 280px; padding: 10px; border: 1px solid #3498db; background-color: #f4faff; box-sizing: border-box; resize: vertical; font-size: 14px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="flex-header">
+        <h2>🌴 통제대 간부 일일 휴가자 추출기</h2>
+        <div>
+            <label><b>조회할 날짜(일): </b></label>
+            <input type="number" id="targetDay" class="date-picker" min="1" max="31">
+        </div>
+    </div>
+    
+    <label><b>📥 엑셀 데이터 원본 전체 복붙 (1팀~4팀 쭉 드래그해서 붙여넣기):</b></label>
+    <textarea id="inputData" placeholder="1 2 3 4 5 6 7 8 ...&#10;대위 김김김         휴&#10;..."></textarea>
+
+    <button class="main-btn" onclick="processLeave()">오늘 휴가자 뽑고 12칸으로 정렬 🚀</button>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <label><b>📋 출력 결과 (1팀 사관 ~ 4팀 부사관, 12줄):</b></label>
+        <button onclick="copyResult()" style="padding: 5px 15px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 3px; font-weight: bold;">📋 복사하기</button>
+    </div>
+    <textarea id="outputData" class="result-area" readonly placeholder="결과가 여기에 세로 12줄로 나옵니다. (한글 표 첫 칸 누르고 Ctrl+V 하세요)"></textarea>
+</div>
+
+<script>
+    // [설정 1] 추적할 휴가 종류 (이 목록에 있는 글자만 휴가로 인정하고 가져옴)
+    const validLeaveTypes = ["휴", "포휴", "연가", "공가", "청원", "위로"];
+
+    // [설정 2] 계급 분류 사전 (이 목록에 없는 단어로 시작하는 줄은 무시함)
+    const rankTypeMap = {
+        "대장": "사관", "중장": "사관", "소장": "사관", "준장": "사관",
+        "대령": "사관", "중령": "사관", "소령": "사관",
+        "대위": "사관", "중위": "사관", "소위": "사관",
+        "준위": "준사관",
+        "원사": "부사관", "원사(진)": "부사관", "상사": "부사관", "중사": "부사관", "하사": "부사관"
+    };
+
+    // 오늘 날짜 기본 세팅
+    document.getElementById("targetDay").value = new Date().getDate();
+
+    function processLeave() {
+        const rawText = document.getElementById("inputData").value;
+        const targetDay = parseInt(document.getElementById("targetDay").value, 10);
+        
+        if (!rawText.trim()) { alert("엑셀 데이터를 붙여넣어 주세요."); return; }
+
+        const results = {
+            1: { "사관": [], "준사관": [], "부사관": [] },
+            2: { "사관": [], "준사관": [], "부사관": [] },
+            3: { "사관": [], "준사관": [], "부사관": [] },
+            4: { "사관": [], "준사관": [], "부사관": [] }
+        };
+
+        const lines = rawText.split("\n");
+        
+        let currentTeam = 0;  // 현재 추적 중인 팀 번호 (1부터 시작)
+        let isPersonBlock = false; // 현재 사람 명단을 읽고 있는 중인지 체크
+
+        for (let line of lines) {
+            // 엑셀에서 복사한 데이터는 탭(\t)으로 열이 나뉨
+            let cells = line.split("\t").map(s => s.trim());
+            
+            if (cells.length < 2) continue;
+
+            let rank = cells[0];
+            let name = cells[1];
+            let type = rankTypeMap[rank]; // 사관, 준사관, 부사관 중 하나
+
+            // 계급 목록에 없는 단어(예: '1', '2', '3' 같은 달력 날짜)가 첫 칸에 있다면
+            if (!type) {
+                isPersonBlock = false; // 사람 명단 블록이 끝남을 표시
+                continue;
+            }
+
+            // 여기까지 코드가 내려왔다면 정상적인 사람 명단(계급) 줄이라는 뜻!
+            
+            // 만약 방금 전까지 사람 명단이 아니었는데, 갑자기 사람이 나타났다면?
+            // => 새로운 팀 달력이 시작된 것! 팀 번호를 +1 올림
+            if (!isPersonBlock) {
+                currentTeam++;
+                isPersonBlock = true;
+            }
+
+            // 만약 실수로 5팀 이상 데이터가 복사되어도 에러 안 나게 4팀까지만 처리
+            if (currentTeam > 4) break;
+
+            // 해당 날짜의 엑셀 열 번호 찾기 (1열=직급, 2열=이름, 3열=1일 -> n일은 인덱스 n+1)
+            let dayIndex = targetDay + 1;
+
+            if (cells.length > dayIndex) {
+                let leaveVal = cells[dayIndex];
+                
+                // 해당 칸에 적힌 글자가 지정된 휴가 종류(휴, 포휴 등)라면
+                if (validLeaveTypes.includes(leaveVal)) {
+                    // 예: "대위 김김3(포휴)" 형태로 만들어서 배열에 추가
+                    results[currentTeam][type].push(`${rank} ${name}(${leaveVal})`);
+                }
+            }
+        }
+
+        // 결과물을 12줄로 예쁘게 조립
+        let outputLines = [];
+        for (let t = 1; t <= 4; t++) {
+            outputLines.push(results[t]["사관"].join(", "));
+            outputLines.push(results[t]["준사관"].join(", "));
+            outputLines.push(results[t]["부사관"].join(", "));
+        }
+
+        document.getElementById("outputData").value = outputLines.join("\n");
+    }
+
+    // 복사 버튼 기능
+    function copyResult() {
+        const copyText = document.getElementById("outputData");
+        copyText.select();
+        document.execCommand("copy");
+        window.getSelection().removeAllRanges();
+        alert("12줄 폼 복사 완료! 한글/엑셀 표의 첫 칸을 누르고 Ctrl+V 하세요.");
+    }
+</script>
+
+</body>
+</html>
