@@ -1,0 +1,1 @@
+@powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0비상대기자.ps1"
