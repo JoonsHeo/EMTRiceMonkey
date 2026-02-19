@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>printable.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<pre class="hljs"><code><div>&lt;html lang=&quot;ko&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;title&gt;통제대 인원 편성 파싱 툴 v3.0&lt;/title&gt;
+    &lt;style&gt;
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 700px; margin: auto; }
+        label { font-weight: bold; color: #2c3e50; }
+        textarea { width: 100%; height: 100px; padding: 10px; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; }
+        .main-btn { background-color: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin: 20px 0; }
+        .main-btn:hover { background-color: #2ecc71; }
+        
+        .output-box { margin-bottom: 20px; background: #eee; padding: 15px; border-radius: 4px; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        h3 { margin: 0; color: #2c3e50; font-size: 16px; }
+        .copy-btn { background-color: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .copy-btn:hover { background-color: #2980b9; }
+        
+        .result-area { width: 100%; padding: 10px; border: 1px solid #ccc; background-color: #fff; box-sizing: border-box; resize: vertical; font-family: 'Malgun Gothic', sans-serif; white-space: pre-wrap; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+&lt;div class=&quot;container&quot;&gt;
+    &lt;h2&gt;🛠️ 통제대 맞춤형 인원 파싱 &amp; 정렬기 (v3.0)&lt;/h2&gt;
+    
+    &lt;label for=&quot;inputData&quot;&gt;📥 원본 데이터 한 번에 붙여넣기 (탭 포함)&lt;/label&gt;
+    &lt;textarea id=&quot;inputData&quot; placeholder=&quot;예시:&amp;#10;원사 이름1/ 중위 이름 2&amp;#10;원사(진) 이름3/ 대위 이름4/ 소위 이름5    병장 이름6/ 소위 이름7/ 중령 이름8&quot;&gt;&lt;/textarea&gt;
+
+    &lt;button class=&quot;main-btn&quot; onclick=&quot;processData()&quot;&gt;자동 변환 및 팀 편성 실행 🚀&lt;/button&gt;
+
+    &lt;div class=&quot;output-box&quot;&gt;
+        &lt;div class=&quot;header-area&quot;&gt;
+            &lt;h3&gt;출력 1. 쉼표 구분 (원본 형태 유지)&lt;/h3&gt;
+            &lt;button class=&quot;copy-btn&quot; onclick=&quot;copyToClipboard('output1')&quot;&gt;📋 복사하기&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;textarea id=&quot;output1&quot; class=&quot;result-area&quot; readonly style=&quot;height: 100px;&quot;&gt;&lt;/textarea&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;output-box&quot;&gt;
+        &lt;div class=&quot;header-area&quot;&gt;
+            &lt;h3&gt;출력 2. 팀별 계급 정렬 및 시간 부여&lt;/h3&gt;
+            &lt;button class=&quot;copy-btn&quot; onclick=&quot;copyToClipboard('output2')&quot;&gt;📋 복사하기&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;textarea id=&quot;output2&quot; class=&quot;result-area&quot; readonly style=&quot;height: 250px;&quot;&gt;&lt;/textarea&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+    // 공군 전체 계급 서열 딕셔너리 (중령, 대령 등 추가 완료)
+    const rankWeight = {
+        &quot;대장&quot;: 1, &quot;중장&quot;: 2, &quot;소장&quot;: 3, &quot;준장&quot;: 4,
+        &quot;대령&quot;: 5, &quot;중령&quot;: 6, &quot;소령&quot;: 7,
+        &quot;대위&quot;: 8, &quot;중위&quot;: 9, &quot;소위&quot;: 10,
+        &quot;준위&quot;: 11,
+        &quot;원사&quot;: 12, &quot;원사(진)&quot;: 13, &quot;상사&quot;: 14, &quot;중사&quot;: 15, &quot;하사&quot;: 16,
+        &quot;병장&quot;: 17, &quot;상병&quot;: 18, &quot;일병&quot;: 19, &quot;이병&quot;: 20
+    };
+
+    function sortByRank(teamArray) {
+        return teamArray.sort((a, b) =&gt; {
+            let rankA = a.name.split(&quot; &quot;)[0];
+            let rankB = b.name.split(&quot; &quot;)[0];
+            let weightA = rankWeight[rankA] || 99;
+            let weightB = rankWeight[rankB] || 99;
+            return weightA - weightB; // 숫자가 작을수록(높은 계급) 위로 올라감
+        });
+    }
+
+    function processData() {
+        const rawText = document.getElementById(&quot;inputData&quot;).value;
+        if (!rawText.trim()) return;
+
+        // ==========================================
+        // [출력 1] 정규표현식으로 슬래시(/)와 주변 공백만 ', '로 치환
+        // 탭(\t)과 줄바꿈(\n)은 절대 건드리지 않음
+        // ==========================================
+        const format1 = rawText.replace(/ *\/ */g, &quot;, &quot;);
+        document.getElementById(&quot;output1&quot;).value = format1;
+
+        // ==========================================
+        // [출력 2] 탭을 기준으로 1시간 / 30분 판별 및 파싱
+        // ==========================================
+        let allPeople = [];
+        let lines = rawText.split(&quot;\n&quot;);
+
+        for (let line of lines) {
+            if (!line.trim()) continue; // 빈 줄 무시
+
+            // 한 줄 안에서 탭(\t)을 기준으로 좌/우 분리
+            let parts = line.split(&quot;\t&quot;);
+            
+            // 1. 탭 왼쪽 그룹 (1시간)
+            if (parts[0]) {
+                let leftGroup = parts[0].split(&quot;/&quot;).map(s =&gt; s.trim()).filter(Boolean);
+                leftGroup.forEach(p =&gt; allPeople.push({ name: p, time: &quot;1시간&quot; }));
+            }
+            
+            // 2. 탭 오른쪽 그룹 (30분)
+            if (parts[1]) {
+                let rightGroup = parts[1].split(&quot;/&quot;).map(s =&gt; s.trim()).filter(Boolean);
+                rightGroup.forEach(p =&gt; allPeople.push({ name: p, time: &quot;30분&quot; }));
+            }
+        }
+
+        // 인덱스 매핑 (결원 발생 시 에러 방지를 위해 filter(Boolean) 유지)
+        let t1 = [allPeople[0], allPeople[1], allPeople[5]].filter(Boolean);
+        let t2 = [allPeople[2], allPeople[3]].filter(Boolean);
+        let t3 = [allPeople[4], allPeople[6]].filter(Boolean);
+        let t4 = [allPeople[7]].filter(Boolean);
+
+        // 각 팀별로 계급 정렬
+        t1 = sortByRank(t1);
+        t2 = sortByRank(t2);
+        t3 = sortByRank(t3);
+        t4 = sortByRank(t4);
+
+        // 모든 팀을 하나의 배열로 합친 뒤, &quot;이름 시간&quot; 형태로 변환
+        let sortedAll = [...t1, ...t2, ...t3, ...t4];
+        let output2Text = sortedAll.map(p =&gt; `${p.name} ${p.time}`).join(&quot;\n&quot;);
+
+        document.getElementById(&quot;output2&quot;).value = output2Text;
+    }
+
+    function copyToClipboard(elementId) {
+        const copyText = document.getElementById(elementId);
+        if(!copyText.value) {
+            alert(&quot;먼저 변환을 실행해주세요!&quot;);
+            return;
+        }
+        copyText.select();
+        document.execCommand(&quot;copy&quot;);
+        window.getSelection().removeAllRanges();
+    }
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;```</div></code></pre>
+
+</body>
+</html>
