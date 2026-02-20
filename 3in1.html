@@ -49,6 +49,26 @@
     <div id="offO" class="res-box"></div>
 </div>
 
+<div class="section">
+    <h2>참고보고 Scraper (신고 명단)</h2>
+    기준(AFT) 날짜: <input id="refM" size="2">월 <input id="refD" size="2">일 
+    <button onclick="refRun()">통합 보고 생성 🚀</button>
+    
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <div style="flex: 1;">
+            <div style="font-weight: bold; margin-bottom: 5px; color: #34495e;">[AFT 보고 (오늘 저녁)]</div>
+            <div id="outAFT" class="res-box" style="background: white; border: 2px solid #34495e; min-height: 150px; white-space: pre-wrap;"></div>
+            <button onclick="qCopyText('outAFT')">AFT 텍스트 복사</button>
+        </div>
+        
+        <div style="flex: 1;">
+            <div style="font-weight: bold; margin-bottom: 5px; color: #34495e;">[MOR 보고 (3일 뒤 아침)]</div>
+            <div id="outMOR" class="res-box" style="background: white; border: 2px solid #34495e; min-height: 150px; white-space: pre-wrap;"></div>
+            <button onclick="qCopyText('outMOR')">MOR 텍스트 복사</button>
+        </div>
+    </div>
+</div>
+
 <script>
 /** * [공통 설정 변수]
  * AM/AD: 근무 주기의 기준점 (2026년 2월 17일 미드 근무를 0으로 잡음)
@@ -226,6 +246,85 @@ function offRun(){
     for(let i=1;i<5;i++) ["사","준","부"].forEach(k=>h+=`<td valign='top'>${R[i][k].join("<br><br>")}</td>`);
     $('offO').innerHTML=h+"</tr></table>"; qCopy('offO');
 }
+
+/* --- 4. 참고보고 Scraper 로직 --- */
+// 초기값 세팅
+$('refM').value = new Date().getMonth() + 1;
+$('refD').value = new Date().getDate();
+
+// 텍스트 복사 함수 (참고보고 전용)
+const qCopyText = id => {
+    const e = $(id); const range = document.createRange(); range.selectNodeContents(e);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    document.execCommand('copy'); sel.removeAllRanges();
+};
+
+const T_MAP = {1: "무", 2: "무", 3: "공", 4: "식"};
+
+function refRun() {
+    const m = +$('refM').value, d = +$('refD').value;
+    const aftDate = new Date(Y, m - 1, d);
+    const morDate = new Date(Y, m - 1, d + 3); // AFT 기준 3일 뒤 자동 계산
+
+    $('outAFT').innerText = genRefText('AFT', aftDate);
+    $('outMOR').innerText = genRefText('MOR', morDate);
+}
+
+function genRefText(type, dateObj) {
+    let lvArr = [], rtArr = [];
+    const tM = dateObj.getMonth() + 1;
+    const tD = dateObj.getDate();
+    const sic = (type === 'AFT') ? 3 : 0; // AFT는 3번(AFT), MOR은 0번(MOR)
+    const ep = new Date(Y, AM - 1, AD - 1).setHours(0, 0, 0, 0);
+
+    // 4.1 병사 데이터 분석 (solI 사용)
+    const sV = $('solI').value, sOF = +$('solOF').value;
+    if (sV) {
+        let sa = Math.floor(Math.round((dateObj.setHours(0,0,0,0) - ep) / 864e5) / 5) * 6 + sic - sOF;
+        let ls = sV.split('\n').map(x => x.split('\t').map(y => y.trim()));
+        SOL_LIST.forEach((name, i) => {
+            let r = ls[i]; if (!r || (r[sa] && r[sa] !== " ")) return; // 현재 상번 중이어야 함
+            // 휴가신고 (Forward Look)
+            for (let stp of (type === 'AFT' ? [1, 2, 3] : [1])) if (r[sa + stp] && r[sa + stp].trim()) {
+                let ed = sa + stp; while (ed < r.length - 1 && r[ed + 1] == r[sa + stp]) ed++;
+                let gD = a => new Date(ep + (Math.floor(a/6)*5 + [0,1,1,2,3,4][((a%6)+6)%6]) * 864e5);
+                lvArr.push(`(병)${name}(~(${gD(ed).getDate()}.))`); break;
+            }
+            // 복귀신고 (Backward Look)
+            for (let stp of (type === 'AFT' ? [-1] : [-1, -2, -3])) if (r[sa + stp] && r[sa + stp].trim()) {
+                rtArr.push(`(병)${name}`); break;
+            }
+        });
+    }
+
+    // 4.2 간부 데이터 분석 (offI 사용)
+    const oV = $('offI').value;
+    if (oV) {
+        let ls = oV.split('\n').map(x => x.split('\t').map(y => y.trim())), tCol = -1, lastH = null, t = 0, b = 0;
+        ls.forEach(L => {
+            if (L.some(c => c == tD.toString())) {
+                let idxs = L.map((c, i) => c == tD.toString() ? i : -1).filter(i => i != -1);
+                tCol = (idxs.length > 1 && $('offSW').checked) ? idxs[1] : idxs[0];
+                lastH = L; if (!b) { t++; b = 1; } return;
+            }
+            if (L.length < 2 || (!L[0] && !L[1])) { b = 0; return; }
+            let r = L[0], n = L[1]; if (!r || !n || (L[tCol] && L[tCol] !== " ")) return;
+            let tm = T_MAP[t] || "?";
+            // 휴가신고
+            for (let stp of (type === 'AFT' ? [1, 2, 3] : [1])) if (L[tCol + stp] && L[tCol + stp].trim()) {
+                let ed = tCol + stp; while (ed < L.length - 1 && L[ed + 1] == L[tCol + stp]) ed++;
+                lvArr.push(`(${tm})${r} ${n}(~(${lastH[ed] || tD}.))`); break;
+            }
+            // 복귀신고
+            for (let stp of (type === 'AFT' ? [-1] : [-1, -2, -3])) if (L[tCol + stp] && L[tCol + stp].trim()) {
+                rtArr.push(`(${tm})${r} ${n}`); break;
+            }
+        });
+    }
+
+    return `${type} 휴가신고:\n${lvArr.join('\n')}\n\n${type} 복귀신고:\n${rtArr.join('\n')}`;
+}
+
 </script>
 </body>
 </html>
