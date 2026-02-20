@@ -1,3 +1,4 @@
+<h2 style="margin:5px 0;">병사휴가 Scraper</h2>
 복붙기준 <input type="number" id="OF" value="5" style="width:40px">열 전 | 
 <label><input type="checkbox" id="SW"> 조회일이 스윙☑️</label><br>
 조회일: <input id="M" size="2">월 <input id="D" size="2">일 
@@ -11,32 +12,45 @@
 
 <script>
 let AM = 2, AD = 17; // 기준 미드일: 2월 17일
-let SL = `병장 이름1\n병장 이름2\n병장 이름3\n병장 이름4\n병장 이름5\n병장 이름6\n상병 이름7\n상병 이름8\n상병 이름9\n상병 이름10\n상병 이름11\n일병 이름12\n일병 이름13\n일병 이름14\n이병 이름15`.split('\n');
+
+// 👇 병사 명단 (이름 사이에 실제 줄바꿈을 해서 15명을 적으시면 됩니다)
+let SL = `
+병장 이름1
+병장 이름2
+병장 이름3
+병장 이름4
+병장 이름5
+병장 이름6
+상병 이름7
+상병 이름8
+상병 이름9
+상병 이름10
+상병 이름11
+일병 이름12
+일병 이름13
+일병 이름14
+이병 이름15
+`.trim().split('\n');
+
+let VM = { "포상":"포상휴가", "보상":"보상휴가", "위로":"위로휴가", "포휴":"포상휴가", "연가":"연가", "공가":"공가", "외박":"외박" };
 let Y = new Date().getFullYear(); M.value = new Date().getMonth()+1; D.value = new Date().getDate();
 
 function G(m, d) {
     let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), td=Math.round((new Date(Y,m-1,d).setHours(0,0,0,0)-ep)/864e5);
     let cd=((td%5)+5)%5; return {td, cd, sic:cd==0?0:cd==1?(SW.checked?2:1):cd+1};
 }
-
-function N(){ // 다음 근무: MID(1) -> SWI(2) 일 때만 날짜 유지
+function N(){ 
     let {sic} = G(+M.value, +D.value);
     if(sic==1) SW.checked=true;
     else { SW.checked=false; let n=new Date(Y,+M.value-1,+D.value+1); M.value=n.getMonth()+1; D.value=n.getDate(); }
     OF.value=+OF.value+1; X();
 }
-
-function P(){ // 이전 근무: SWI(2) -> MID(1) 일 때만 날짜 유지
+function P(){ 
     let {sic} = G(+M.value, +D.value);
-    if(sic==2) SW.checked=false; // 스윙에서 미드로 갈 땐 날짜 그대로
-    else {
-        if(sic==3) SW.checked=true; else SW.checked=false; // AFT(3)에서 올 땐 스윙으로
-        let n=new Date(Y,+M.value-1,+D.value-1);
-        M.value=n.getMonth()+1; D.value=n.getDate();
-    }
+    if(sic==2) SW.checked=false;
+    else { if(sic==3) SW.checked=true; else SW.checked=false; let n=new Date(Y,+M.value-1,+D.value-1); M.value=n.getMonth()+1; D.value=n.getDate(); }
     OF.value=+OF.value-1; X();
 }
-
 function X(){
     let m=+M.value, d=+D.value, of=+OF.value, v=I.value, ans=[], W=0;
     let ep = new Date(Y, AM-1, AD-1).setHours(0,0,0,0), target = new Date(Y, m-1, d).setHours(0,0,0,0);
@@ -44,25 +58,26 @@ function X(){
     INF.innerText = `[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`;
     MSG.innerText = ""; if(!v) return;
     let gD = a => new Date(ep + (Math.floor(a/6)*5 + [0,1,1,2,3,4][((a%6)+6)%6])*864e5);
-    let V = ["휴","포휴","연가","공가","위로","외박","보상"], ls = v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
+    let ls = v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
     SL.forEach((sl, i) => {
         let r = ls[i]; if(!r) return;
         for(let j=0; j<r.length; j++){
-            if(V.includes(r[j])){
+            let lv = r[j];
+            if(lv=="휴" || VM[lv]){
                 let cD = gD(sa+j);
                 if(cD.getTime() == target){
-                    let st=j, ed=j, lv=r[j];
+                    let st=j, ed=j;
                     while(st>0 && r[st-1]==lv) st--; while(ed<r.length-1 && r[ed+1]==lv) ed++;
                     if(st==0 || ed==r.length-1) W=1;
-                    let d1 = gD(sa+st), d2 = gD(sa+ed);
+                    let d1 = gD(sa+st), d2 = gD(sa+ed), vn = VM[lv] || lv;
                     let dt = d1.getTime()==d2.getTime() ? `(${d1.getMonth()+1}.${d1.getDate()}.)` : `(${d1.getMonth()+1}.${d1.getDate()}.~${d1.getMonth()==d2.getMonth()?"":d2.getMonth()+1+"."}${d2.getDate()}.)`;
-                    ans.push(`${sl}<br><br>${lv=="휴"?"":`(${lv})<br><br>`}${dt}`); break;
+                    ans.push(`${sl}<br><br>${lv=="휴"?"":`(${vn})<br><br>`}${dt}`); break;
                 }
             }
         }
     });
     O.innerHTML = `<table id='T' border='1'><tr><td valign='top'>${ans.join("<br><br><br>")}</td></tr></table>`;
-    if(W) MSG.innerText = "⚠️ 짤림주의!";
+    if(W) MSG.innerText = "⚠️ 짤린 일정주의!";
     let s=getSelection(), rg=document.createRange(); rg.selectNodeContents(T); s.removeAllRanges(); s.addRange(rg); document.execCommand("copy"); s.removeAllRanges();
 }
 </script>
