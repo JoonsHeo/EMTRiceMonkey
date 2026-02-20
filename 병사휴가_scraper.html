@@ -1,86 +1,68 @@
-현재 기준 <input type="number" id="OF" value="5" style="width:40px">열 전부터 복붙<br>
-조회일: <input id="M" size="2">월 <input id="D" size="2">일
-<button onclick="X()">조회 🚀</button> <span id="INF" style="color:#27ae60;font-weight:bold;"></span><br>
-<textarea id="I" cols="60" rows="4" placeholder="이름/날짜 빼고 딱 '휴가 그리드'만 통째로 복붙"></textarea><br>
-<button onclick="C(O, this)">📋 표 복사</button> <span id="MSG" style="color:red;font-weight:bold;margin-left:10px;"></span>
+복붙기준 <input type="number" id="OF" value="5" style="width:40px">열 전 | 
+<label><input type="checkbox" id="SW"> 조회일이 스윙☑️</label><br>
+조회일: <input id="M" size="2">월 <input id="D" size="2">일 
+<button onclick="P()">⏪ 이전</button>
+<button onclick="X()">조회+복사 🚀</button> 
+<button onclick="N()">다음 ⏩</button><br>
+<span id="INF" style="color:#27ae60;font-weight:bold;"></span>
+<span id="MSG" style="color:red;font-weight:bold;margin-left:5px;"></span><br>
+<textarea id="I" cols="60" rows="4" placeholder="딱 '휴가 그리드'만 복붙"></textarea>
 <div id="O" style="padding:5px; background:#eee; margin-top:5px;"></div>
 
 <script>
-// 👇 미드 기준일 (월, 일)
-let AM = 2, AD = 17; 
+let AM = 2, AD = 17; // 기준 미드일: 2월 17일
+let SL = `병장 이름1\n병장 이름2\n병장 이름3\n병장 이름4\n병장 이름5\n병장 이름6\n상병 이름7\n상병 이름8\n상병 이름9\n상병 이름10\n상병 이름11\n일병 이름12\n일병 이름13\n일병 이름14\n이병 이름15`.split('\n');
+let Y = new Date().getFullYear(); M.value = new Date().getMonth()+1; D.value = new Date().getDate();
 
-// 👇 병사 명단 (복사할 엑셀 행 순서와 똑같이 위에서부터 작성)
-let SL = `
-병장 이름1
-병장 이름2
-병장 이름3
-병장 이름4
-병장 이름5
-병장 이름6
-상병 이름7
-상병 이름8
-상병 이름9
-상병 이름10
-상병 이름11
-일병 이름12
-일병 이름13
-일병 이름14
-이병 이름15
-`.trim().split('\n');
+function G(m, d) {
+    let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), td=Math.round((new Date(Y,m-1,d).setHours(0,0,0,0)-ep)/864e5);
+    let cd=((td%5)+5)%5; return {td, cd, sic:cd==0?0:cd==1?(SW.checked?2:1):cd+1};
+}
 
-// 팝업 없이 버튼 글자만 2초간 '✅ 복사완료'로 바뀌게 수정
-let C=(e,b)=>{let s=getSelection(), r=document.createRange(); r.selectNodeContents(e); s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); s.removeAllRanges(); b.innerText="✅ 복사됨!"; setTimeout(()=>b.innerText="📋 표 복사",2000);}
+function N(){ // 다음 근무: MID(1) -> SWI(2) 일 때만 날짜 유지
+    let {sic} = G(+M.value, +D.value);
+    if(sic==1) SW.checked=true;
+    else { SW.checked=false; let n=new Date(Y,+M.value-1,+D.value+1); M.value=n.getMonth()+1; D.value=n.getDate(); }
+    OF.value=+OF.value+1; X();
+}
 
-let t=new Date(), Y=t.getFullYear();
-M.value=t.getMonth()+1; D.value=t.getDate();
+function P(){ // 이전 근무: SWI(2) -> MID(1) 일 때만 날짜 유지
+    let {sic} = G(+M.value, +D.value);
+    if(sic==2) SW.checked=false; // 스윙에서 미드로 갈 땐 날짜 그대로
+    else {
+        if(sic==3) SW.checked=true; else SW.checked=false; // AFT(3)에서 올 땐 스윙으로
+        let n=new Date(Y,+M.value-1,+D.value-1);
+        M.value=n.getMonth()+1; D.value=n.getDate();
+    }
+    OF.value=+OF.value-1; X();
+}
 
 function X(){
     let m=+M.value, d=+D.value, of=+OF.value, v=I.value, ans=[], W=0;
-    
-    let ep = new Date(Y, AM-1, AD-1).setHours(0,0,0,0);
-    let td = Math.floor((new Date(Y, t.getMonth(), t.getDate()).setHours(0,0,0,0) - ep)/864e5);
-    let cd = ((td%5)+5)%5, sic = cd==0?0 : cd==1?(t.getHours()<12?1:2) : cd+1;
-    let ca = Math.floor(td/5)*6 + sic, sa = ca - of; 
-    
-    INF.innerText = `[${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`;
-    MSG.innerText = ""; // 켤 때마다 경고창 초기화
-    if(!v) return;
-    
+    let ep = new Date(Y, AM-1, AD-1).setHours(0,0,0,0), target = new Date(Y, m-1, d).setHours(0,0,0,0);
+    let {sic} = G(m, d), ca = Math.floor(Math.round((target-ep)/864e5)/5)*6 + sic, sa = ca - of; 
+    INF.innerText = `[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`;
+    MSG.innerText = ""; if(!v) return;
     let gD = a => new Date(ep + (Math.floor(a/6)*5 + [0,1,1,2,3,4][((a%6)+6)%6])*864e5);
-    let V = ["휴","포휴","연가","공가","위로","외박","보상"];
-    
-    // 엑셀 칸 데이터 배열화
-    let ls = v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
-    
-    // 명단(SL)의 i번째 사람 = 엑셀(ls)의 i번째 줄
+    let V = ["휴","포휴","연가","공가","위로","외박","보상"], ls = v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
     SL.forEach((sl, i) => {
-        let r = ls[i]; 
-        if(!r) return;
-        let dl = r.length;
-        
-        for(let j=0; j<dl; j++){
-            let lv = r[j];
-            if(V.includes(lv)){
-                let cd_date = gD(sa+j);
-                if(cd_date.getMonth()+1 == m && cd_date.getDate() == d){
-                    let st=j, ed=j;
-                    while(st>0 && r[st-1]==lv) st--;
-                    while(ed<dl-1 && r[ed+1]==lv) ed++;
-                    
-                    if(st==0 || ed==dl-1) W=1; // 경고 플래그
-                    
+        let r = ls[i]; if(!r) return;
+        for(let j=0; j<r.length; j++){
+            if(V.includes(r[j])){
+                let cD = gD(sa+j);
+                if(cD.getTime() == target){
+                    let st=j, ed=j, lv=r[j];
+                    while(st>0 && r[st-1]==lv) st--; while(ed<r.length-1 && r[ed+1]==lv) ed++;
+                    if(st==0 || ed==r.length-1) W=1;
                     let d1 = gD(sa+st), d2 = gD(sa+ed);
                     let dt = d1.getTime()==d2.getTime() ? `(${d1.getMonth()+1}.${d1.getDate()}.)` : `(${d1.getMonth()+1}.${d1.getDate()}.~${d1.getMonth()==d2.getMonth()?"":d2.getMonth()+1+"."}${d2.getDate()}.)`;
-                    ans.push(`${sl}<br><br>${lv=="휴"?"":`(${lv})<br><br>`}${dt}`);
-                    break;
+                    ans.push(`${sl}<br><br>${lv=="휴"?"":`(${lv})<br><br>`}${dt}`); break;
                 }
             }
         }
     });
-    
-    O.innerHTML = `<table border='1'><tr><td valign='top'>${ans.join("<br><br><br>")}</td></tr></table>`;
-    // 팝업 대신 버튼 옆에 빨간 글씨로 경고 출력
-    if(W) MSG.innerText = "⚠️ 짤린 일정 확인!"; 
+    O.innerHTML = `<table id='T' border='1'><tr><td valign='top'>${ans.join("<br><br><br>")}</td></tr></table>`;
+    if(W) MSG.innerText = "⚠️ 짤림주의!";
+    let s=getSelection(), rg=document.createRange(); rg.selectNodeContents(T); s.removeAllRanges(); s.addRange(rg); document.execCommand("copy"); s.removeAllRanges();
 }
-X();
 </script>
