@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>EMT 쌀먹 키트</title>
     <style>
+        /* 기본 레이아웃 설정: 가독성을 위해 여백과 색상을 지정 */
         body { font-family: sans-serif; line-height: 1.5; padding: 20px; background-color: #f4f4f4; }
         .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ddd; }
         h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-top: 0; }
@@ -21,13 +22,12 @@
     <button onclick="parseRun()">변환 🚀</button> | 
     <button onclick="qCopy('parseO1')">쉼표 복사</button>
     <button onclick="qCopy('parseO2')">정렬 복사</button>
-    <div id="parseO1" class="res-box"></div>
-    <div id="parseO2" class="res-box"></div>
-</div>
+    <div id="parseO1" class="res-box"></div> <div id="parseO2" class="res-box"></div> </div>
 
 <div class="section">
     <h2>병사휴가 Scraper</h2>
-    기준: <input type="number" id="solOF" value="5" style="width:40px">열 전 | <label><input type="checkbox" id="solSW"> 스윙</label><br>
+    기준: <input type="number" id="solOF" value="5" style="width:40px">열 전 | 
+    <label><input type="checkbox" id="solSW"> 스윙</label><br>
     조회: <input id="solM" size="2">월 <input id="solD" size="2">일 
     <button onclick="move(-1,'sol')">⏪ 이전</button>
     <button onclick="solRun()">조회+복사 🚀</button> 
@@ -50,64 +50,113 @@
 </div>
 
 <script>
+/** * [공통 설정 변수]
+ * AM/AD: 근무 주기의 기준점 (2026년 2월 17일 미드 근무를 0으로 잡음)
+ * VM: 엑셀 단어를 출력용 정식 명칭으로 변환하는 매핑 테이블
+ */
 const $=id=>document.getElementById(id), AM=2, AD=17, Y=2026;
 const VM={"포상":"포상휴가","보상":"보상휴가","위로":"위로휴가","포휴":"포상휴가","연가":"연가","공가":"공가","외박":"외박"};
+
+// 휴가 기간 텍스트 생성: 시작일과 종료일이 같으면 단일일자로, 다르면 범위로 표시
 const fmtDt=(m,d1,d2)=>d1==d2?`(${m}.${d1}.)`:`(${m}.${d1}.~${d2}.)`;
 
+/**
+ * [공통 복사 함수]
+ * 지정된 ID 내부의 table 요소를 찾아서 클립보드에 복사함 (서식 유지)
+ */
 const qCopy=id=>{
     const s=getSelection(), r=document.createRange(), e=$(id);
     r.selectNodeContents(e.querySelector('table')||e);
     s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); s.removeAllRanges();
 };
 
+/**
+ * [근무 주기 판별 함수 - 핵심 로직]
+ * 날짜와 스윙 체크 여부를 넣으면 해당 시점의 근무 인덱스(sic)를 반환
+ * sic 값: 0:MOR, 1:MID, 2:SWI, 3:AFT, 4:BRK, 5:BRK (5일 6교대)
+ */
 function getSic(m, d, sw){
-    let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), td=Math.round((new Date(Y,m-1,d).setHours(0,0,0,0)-ep)/864e5);
-    let cd=((td%5)+5)%5; return cd==0?0:cd==1?(sw?2:1):cd+1;
+    let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0); // 기준일(2.17)
+    let td=Math.round((new Date(Y,m-1,d).setHours(0,0,0,0)-ep)/864e5); // 기준일로부터 경과 일수
+    let cd=((td%5)+5)%5; // 5일 주기 중 며칠째인지 (0~4)
+    // 0일째면 MOR(0), 1일째면 MID(1) 또는 SWI(2), 그 외엔 날짜+1 (AFT:3, BRK:4,5)
+    return cd==0?0:cd==1?(sw?2:1):cd+1;
 }
 
+/**
+ * [근무 이동 함수]
+ * 이전/다음 버튼 클릭 시 날짜와 스윙 체크박스를 유기적으로 변경함
+ */
 function move(step, p){
     let m=$(p+'M'), d=$(p+'D'), sw=$(p+'SW'), s=getSic(+m.value,+d.value,sw.checked);
-    if(step>0){ // Next
-        if(s==1)sw.checked=true; else{sw.checked=false; let n=new Date(Y,+m.value-1,+d.value+1); m.value=n.getMonth()+1; d.value=n.getDate();}
-        if(p=='sol')$(p+'OF').value=+$(p+'OF').value+1;
-    } else { // Prev
-        if(s==2)sw.checked=false; else{if(s==3)sw.checked=true; else sw.checked=false; let n=new Date(Y,+m.value-1,+d.value-1); m.value=n.getMonth()+1; d.value=n.getDate();}
-        if(p=='sol')$(p+'OF').value=+$(p+'OF').value-1;
+    if(step>0){ // [다음]으로 이동 시 로직
+        if(s==1)sw.checked=true; // MID에서 다음은 같은 날 SWI
+        else{sw.checked=false; let n=new Date(Y,+m.value-1,+d.value+1); m.value=n.getMonth()+1; d.value=n.getDate();}
+        if(p=='sol')$(p+'OF').value=+$(p+'OF').value+1; // 병사는 오프셋도 같이 증가
+    } else { // [이전]으로 이동 시 로직
+        if(s==2)sw.checked=false; // SWI에서 이전은 같은 날 MID
+        else{if(s==3)sw.checked=true; else sw.checked=false; let n=new Date(Y,+m.value-1,+d.value-1); m.value=n.getMonth()+1; d.value=n.getDate();}
+        if(p=='sol')$(p+'OF').value=+$(p+'OF').value-1; // 병사는 오프셋도 같이 감소
     }
-    window[p+'Run']();
+    window[p+'Run'](); // 이동 후 자동으로 조회 실행
 }
 
-/* 1. 비상대기자 Parser */
+/* --- 1. 비상대기자 Parser 로직 --- */
 const W_List="대위,대위(진),중위,중위(진),소위,소위(진),준위,원사,원사(진),상사,상사(진),중사,중사(진),하사,하사(진)".split(',');
 function parseRun(){
-    let v=$('parseI').value.replace(/"/g,""); if(!v)return;
+    let v=$('parseI').value.replace(/"/g,""); if(!v)return; // 엑셀에서 딸려오는 따옴표 제거
     let L1=[], L2=[], A=[];
     v.split('\n').map(L=>{
-        let P=L.split('\t'), p1=[], p2=[];
-        const f=s=>s.split('/').map(x=>x.trim()).filter(x=>x);
-        if(P[0]){ p1=f(P[0]); L1.push(p1.join(', ')); p1.map(x=>A.push({n:x,t:"1시간"})); }
-        if(P[1]){ p2=f(P[1]); L2.push(p2.join(', ')); p2.map(x=>A.push({n:x,t:"30분"})); }
+        let P=L.split('\t'); // 탭으로 1시간/30분 구분
+        const f=s=>s.split('/').map(x=>x.trim()).filter(x=>x); // 이름 사이 '/' 기준으로 분리
+        if(P[0]){ let p1=f(P[0]); L1.push(p1.join(', ')); p1.map(x=>A.push({n:x,t:"1시간"})); }
+        if(P[1]){ let p2=f(P[1]); L2.push(p2.join(', ')); p2.map(x=>A.push({n:x,t:"30분"})); }
     });
+    // 결과 1 (쉼표 나열) 출력
     $('parseO1').innerHTML=`<table border='1'><tr><td>${L1.join('<br>')}</td>${L2.length?`<td>${L2.join('<br>')}</td>`:''}</tr></table>`;
+    // 결과 2 (서열 정렬) 출력
     let F=A.sort((a,b)=>W_List.indexOf(a.n.split(' ')[0])-W_List.indexOf(b.n.split(' ')[0]));
     $('parseO2').innerHTML=`<table border='1'>${F.map(x=>`<tr><td>${x.n}</td><td>${x.t}</td></tr>`).join('')}</table>`;
 }
 
-/* 2. 병사휴가 Scraper */
-const SOL_LIST=`병장 이름1\n병장 이름2\n병장 이름3\n병장 이름4\n병장 이름5\n병장 이름6\n상병 이름7\n상병 이름8\n상병 이름9\n상병 이름10\n상병 이름11\n일병 이름12\n일병 이름13\n일병 이름14\n이병 이름15`.trim().split('\n');
-$('solM').value=2; $('solD').value=20;
+/* --- 2. 병사휴가 Scraper 로직 --- */
+// 병사 명단: 백틱(`)을 사용해 줄바꿈 그대로 인식
+const SOL_LIST=`
+병장 이름1
+병장 이름2
+병장 이름3
+병장 이름4
+병장 이름5
+병장 이름6
+상병 이름7
+상병 이름8
+상병 이름9
+상병 이름10
+상병 이름11
+일병 이름12
+일병 이름13
+일병 이름14
+이병 이름15
+`.trim().split('\n');
+$('solM').value=new Date().getMonth()+1; $('solD').value=new Date().getDate();
+
 function solRun(){
     let m=+$('solM').value, d=+$('solD').value, of=+$('solOF').value, v=$('solI').value, ans=[], W=0;
     let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), target=new Date(Y,m-1,d).setHours(0,0,0,0);
+    // 현재 조회일의 근무 주기 상 위치(s)와 그에 따른 엑셀 열 인덱스(sa) 계산
     let s=getSic(m,d,$('solSW').checked), sa=Math.floor(Math.round((target-ep)/864e5)/5)*6+s-of;
     $('solINF').innerText=`[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][s]}]`;
     if(!v)return;
+    // 인덱스를 날짜로 역산하는 함수
     let gD=a=>new Date(ep+(Math.floor(a/6)*5+[0,1,1,2,3,4][((a%6)+6)%6])*864e5), ls=v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
+    
     SOL_LIST.forEach((sl,i)=>{
         let r=ls[i]; if(!r)return;
         for(let j=0;j<r.length;j++) if((r[j]=="휴"||VM[r[j]]) && gD(sa+j).getTime()==target){
-            let st=j, ed=j, lv=r[j]; while(st>0&&r[st-1]==lv)st--; while(ed<r.length-1&&r[ed+1]==lv)ed++;
-            if(st==0||ed==r.length-1)W=1;
+            let st=j, ed=j, lv=r[j]; 
+            // 같은 종류의 휴가가 앞뒤로 얼마나 연속되는지 확인 (기간 산출)
+            while(st>0&&r[st-1]==lv)st--; while(ed<r.length-1&&r[ed+1]==lv)ed++;
+            if(st==0||ed==r.length-1)W=1; // 데이터가 잘렸을 가능성 체크
             ans.push(`${sl}<br><br>${lv=="휴"?"":`(${VM[lv]||lv})<br><br>`}${fmtDt(m,gD(sa+st).getDate(),gD(sa+ed).getDate())}`); break;
         }
     });
@@ -115,20 +164,26 @@ function solRun(){
     $('solMSG').innerText=W?"⚠️ 짤림!":""; qCopy('solO');
 }
 
-/* 3. 간부휴가 Scraper */
-$('offM').value=2; $('offD').value=20;
+/* --- 3. 간부휴가 Scraper 로직 --- */
+$('offM').value=new Date().getMonth()+1; $('offD').value=new Date().getDate();
 function offRun(){
     let m=+$('offM').value, d=+$('offD').value, v=$('offI').value, t=0, b=0;
+    // 간부용 12칸 (4개 팀 x 3개 직급군) 저장소 생성
     let R={1:{사:[],준:[],부:[]},2:{사:[],준:[],부:[]},3:{사:[],준:[],부:[]},4:{사:[],준:[],부:[]}};
     let s=getSic(m,d,$('offSW').checked); $('offINF').innerText=`[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][s]}]`;
     if(!v)return;
     let ls=v.split('\n').map(x=>x.split('\t').map(y=>y.trim())), tCol=-1, lastH=null;
+    
     ls.forEach(L=>{
+        // 1. 헤더 행(날짜 적힌 행)에서 조회일이 몇 번째 열인지 찾음
         if(L.some(c=>c==d.toString())){
             let idxs=L.map((c,i)=>c==d.toString()?i:-1).filter(i=>i!=-1);
-            tCol=(idxs.length>1&&$('offSW').checked)?idxs[1]:idxs[0]; lastH=L; if(!b){t++;b=1;} return;
+            tCol=(idxs.length>1&&$('offSW').checked)?idxs[1]:idxs[0]; // MID/SWI 구분
+            lastH=L; if(!b){t++;b=1;} return;
         }
+        // 2. 인원 데이터 행 처리
         if(L.length<2||(!L[0]&&!L[1])){b=0; return;}
+        // 직급 판별: 준위 -> 사(장교) -> 부(부사관) 순
         let r=L[0], n=L[1], k=r.includes("준위")?"준":r.includes("위")||r.includes("령")?"사":r.includes("사")||r.includes("원")?"부":"";
         if(!k||tCol==-1||!lastH)return;
         let lv=L[tCol]; if(lv=="휴"||VM[lv]){
@@ -136,6 +191,7 @@ function offRun(){
             R[t][k].push(`${r} ${n}<br><br>${lv=="휴"?"":`(${VM[lv]||lv})<br><br>`}${fmtDt(m,lastH[st]||d,lastH[ed]||d)}`);
         }
     });
+    // 결과 테이블 렌더링
     let h="<table id='offT' border='1'><tr>";
     for(let i=1;i<5;i++) ["사","준","부"].forEach(k=>h+=`<td valign='top'>${R[i][k].join("<br><br>")}</td>`);
     $('offO').innerHTML=h+"</tr></table>"; qCopy('offO');
