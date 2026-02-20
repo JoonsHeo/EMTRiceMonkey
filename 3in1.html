@@ -5,170 +5,140 @@
     <title>EMT 쌀먹 키트</title>
     <style>
         body { font-family: sans-serif; line-height: 1.5; padding: 20px; background-color: #f4f4f4; }
-        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
-        textarea { width: 100%; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; padding: 8px; }
+        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ddd; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-top: 0; }
+        textarea { width: 100%; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; padding: 8px; box-sizing: border-box; }
         button { cursor: pointer; padding: 5px 10px; margin: 2px; border-radius: 4px; border: 1px solid #34495e; background: #34495e; color: white; }
-        button:hover { background: #2c3e50; }
-        .res-box { background: #eee; padding: 10px; margin-top: 10px; min-height: 20px; border-radius: 4px; }
-        input[size="2"] { text-align: center; }
+        .res-box { background: #eee; padding: 10px; margin-top: 10px; border-radius: 4px; overflow-x: auto; }
+        input[size="2"] { text-align: center; width: 35px; }
     </style>
 </head>
 <body>
 
 <div class="section">
     <h2>비상대기자 Parser</h2>
-    <textarea id="parseI" cols="60" rows="4" placeholder="원본 복붙 (탭으로 구분된 1시간/30분 인원)"></textarea><br>
-    <button onclick="parseRun()">변환 및 편성 🚀</button><br><br>
-    1. 쉼표 (셀 1개 통합): <button onclick="qCopy('parseO1')">표 복사</button>
+    <textarea id="parseI" rows="3" placeholder="탭 구분 1시간/30분 인원"></textarea>
+    <button onclick="parseRun()">변환 🚀</button> | 
+    <button onclick="qCopy('parseO1')">쉼표 복사</button>
+    <button onclick="qCopy('parseO2')">정렬 복사</button>
     <div id="parseO1" class="res-box"></div>
-    2. 정렬 (이름/시간 분리): <button onclick="qCopy('parseO2')">표 복사</button>
     <div id="parseO2" class="res-box"></div>
 </div>
 
 <div class="section">
     <h2>병사휴가 Scraper</h2>
-    복붙기준 <input type="number" id="solOF" value="5" style="width:40px">열 전 | 
-    <label><input type="checkbox" id="solSW"> 스윙☑️</label><br>
-    조회일: <input id="solM" size="2">월 <input id="solD" size="2">일 
-    <button onclick="solP()">⏪ 이전</button>
+    기준: <input type="number" id="solOF" value="5" style="width:40px">열 전 | <label><input type="checkbox" id="solSW"> 스윙</label><br>
+    조회: <input id="solM" size="2">월 <input id="solD" size="2">일 
+    <button onclick="move(-1,'sol')">⏪ 이전</button>
     <button onclick="solRun()">조회+복사 🚀</button> 
-    <button onclick="solN()">다음 ⏩</button><br>
-    <span id="solINF" style="color:#27ae60;font-weight:bold;"></span>
-    <span id="solMSG" style="color:red;font-weight:bold;margin-left:5px;"></span><br>
-    <textarea id="solI" cols="60" rows="4" placeholder="딱 '휴가 그리드'만 복붙"></textarea>
+    <button onclick="move(1,'sol')">다음 ⏩</button>
+    <span id="solINF" style="color:#27ae60;font-weight:bold;margin-left:10px;"></span>
+    <span id="solMSG" style="color:red;font-weight:bold;"></span>
+    <textarea id="solI" rows="3" placeholder="딱 '휴가 그리드'만 복붙"></textarea>
     <div id="solO" class="res-box"></div>
 </div>
 
 <div class="section">
     <h2>간부휴가 Scraper</h2>
-    조회일: <input id="offM" size="2">월 <input id="offD" size="2">일 
-    <label><input type="checkbox" id="offSW"> 스윙☑️</label><br>
-    <button onclick="offP()">⏪ 이전</button>
+    조회: <input id="offM" size="2">월 <input id="offD" size="2">일 <label><input type="checkbox" id="offSW"> 스윙</label>
+    <button onclick="move(-1,'off')">⏪ 이전</button>
     <button onclick="offRun()">조회+복사 🚀</button> 
-    <button onclick="offN()">다음 ⏩</button><br>
-    <span id="offINF" style="color:#27ae60;font-weight:bold;"></span>
-    <span id="offMSG" style="color:red;font-weight:bold;margin-left:5px;"></span><br>
-    <textarea id="offI" cols="60" rows="8" placeholder="날짜 헤더 포함 팀별 데이터를 통째로 복붙"></textarea>
+    <button onclick="move(1,'off')">다음 ⏩</button>
+    <span id="offINF" style="color:#27ae60;font-weight:bold;margin-left:10px;"></span>
+    <textarea id="offI" rows="6" placeholder="날짜 헤더 포함 팀별 데이터 복붙"></textarea>
     <div id="offO" class="res-box"></div>
 </div>
 
 <script>
-/* 공통 설정 및 복사 함수 */
-const AM=2, AD=17, Y=2026;
+const $=id=>document.getElementById(id), AM=2, AD=17, Y=2026;
 const VM={"포상":"포상휴가","보상":"보상휴가","위로":"위로휴가","포휴":"포상휴가","연가":"연가","공가":"공가","외박":"외박"};
+const fmtDt=(m,d1,d2)=>d1==d2?`(${m}.${d1}.)`:`(${m}.${d1}.~${d2}.)`;
+
 const qCopy=id=>{
-    const s=getSelection(), r=document.createRange(), e=document.getElementById(id);
-    r.selectNodeContents(e.querySelector('table') || e);
+    const s=getSelection(), r=document.createRange(), e=$(id);
+    r.selectNodeContents(e.querySelector('table')||e);
     s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); s.removeAllRanges();
 };
-
-/* --- 1. 비상대기자 Parser 로직 --- */
-const W_List="대위,대위(진),중위,중위(진),소위,소위(진),준위,원사,원사(진),상사,상사(진),중사,중사(진),하사,하사(진)".split(',');
-const getW=s=>{let i=W_List.indexOf(s.split(' ')[0]); return i<0?99:i;};
-function parseRun(){
-    let v=document.getElementById('parseI').value.replace(/"/g, ""); if(!v)return;
-    let L1=[], L2=[], A=[];
-    v.split('\n').map(L=>{
-        let P=L.split('\t'), p1=[], p2=[];
-        if(P[0]){ p1=P[0].split('/').map(x=>x.trim()).filter(x=>x); if(p1.length) L1.push(p1.join(', ')); p1.map(x=>A.push({n:x,t:"1시간"})); }
-        if(P[1]){ p2=P[1].split('/').map(x=>x.trim()).filter(x=>x); if(p2.length) L2.push(p2.join(', ')); p2.map(x=>A.push({n:x,t:"30분"})); }
-    });
-    document.getElementById('parseO1').innerHTML = `<table border='1'><tr><td>${L1.join('<br>')}</td>${L2.length?`<td>${L2.join('<br>')}</td>`:''}</tr></table>`;
-    let g=(...indices)=>indices.map(x=>A[x]).filter(x=>x).sort((a,b)=>getW(a.n)-getW(b.n));
-    let F=[...g(0,1,5),...g(2,3),...g(4,6),...g(7)];
-    document.getElementById('parseO2').innerHTML = `<table border='1'>${F.map(x=>`<tr><td>${x.n}</td><td>${x.t}</td></tr>`).join('')}</table>`;
-}
-
-/* --- 2. 병사휴가 Scraper 로직 --- */
-const SOL_LIST = `
-병장 이름1
-병장 이름2
-병장 이름3
-병장 이름4
-병장 이름5
-병장 이름6
-상병 이름7
-상병 이름8
-상병 이름9
-상병 이름10
-상병 이름11
-일병 이름12
-일병 이름13
-일병 이름14
-이병 이름15
-`.trim().split('\n');
-document.getElementById('solM').value=2; document.getElementById('solD').value=20;
 
 function getSic(m, d, sw){
     let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), td=Math.round((new Date(Y,m-1,d).setHours(0,0,0,0)-ep)/864e5);
     let cd=((td%5)+5)%5; return cd==0?0:cd==1?(sw?2:1):cd+1;
 }
-function solN(){
-    let sic=getSic(+solM.value,+solD.value,solSW.checked);
-    if(sic==1)solSW.checked=true; else{solSW.checked=false; let n=new Date(Y,+solM.value-1,+solD.value+1); solM.value=n.getMonth()+1; solD.value=n.getDate();}
-    solOF.value=+solOF.value+1; solRun();
+
+function move(step, p){
+    let m=$(p+'M'), d=$(p+'D'), sw=$(p+'SW'), s=getSic(+m.value,+d.value,sw.checked);
+    if(step>0){ // Next
+        if(s==1)sw.checked=true; else{sw.checked=false; let n=new Date(Y,+m.value-1,+d.value+1); m.value=n.getMonth()+1; d.value=n.getDate();}
+        if(p=='sol')$(p+'OF').value=+$(p+'OF').value+1;
+    } else { // Prev
+        if(s==2)sw.checked=false; else{if(s==3)sw.checked=true; else sw.checked=false; let n=new Date(Y,+m.value-1,+d.value-1); m.value=n.getMonth()+1; d.value=n.getDate();}
+        if(p=='sol')$(p+'OF').value=+$(p+'OF').value-1;
+    }
+    window[p+'Run']();
 }
-function solP(){
-    let sic=getSic(+solM.value,+solD.value,solSW.checked);
-    if(sic==2)solSW.checked=false; else{if(sic==3)solSW.checked=true; else solSW.checked=false; let n=new Date(Y,+solM.value-1,+solD.value-1); solM.value=n.getMonth()+1; solD.value=n.getDate();}
-    solOF.value=+solOF.value-1; solRun();
+
+/* 1. 비상대기자 Parser */
+const W_List="대위,대위(진),중위,중위(진),소위,소위(진),준위,원사,원사(진),상사,상사(진),중사,중사(진),하사,하사(진)".split(',');
+function parseRun(){
+    let v=$('parseI').value.replace(/"/g,""); if(!v)return;
+    let L1=[], L2=[], A=[];
+    v.split('\n').map(L=>{
+        let P=L.split('\t'), p1=[], p2=[];
+        const f=s=>s.split('/').map(x=>x.trim()).filter(x=>x);
+        if(P[0]){ p1=f(P[0]); L1.push(p1.join(', ')); p1.map(x=>A.push({n:x,t:"1시간"})); }
+        if(P[1]){ p2=f(P[1]); L2.push(p2.join(', ')); p2.map(x=>A.push({n:x,t:"30분"})); }
+    });
+    $('parseO1').innerHTML=`<table border='1'><tr><td>${L1.join('<br>')}</td>${L2.length?`<td>${L2.join('<br>')}</td>`:''}</tr></table>`;
+    let F=A.sort((a,b)=>W_List.indexOf(a.n.split(' ')[0])-W_List.indexOf(b.n.split(' ')[0]));
+    $('parseO2').innerHTML=`<table border='1'>${F.map(x=>`<tr><td>${x.n}</td><td>${x.t}</td></tr>`).join('')}</table>`;
 }
+
+/* 2. 병사휴가 Scraper */
+const SOL_LIST=`병장 이름1\n병장 이름2\n병장 이름3\n병장 이름4\n병장 이름5\n병장 이름6\n상병 이름7\n상병 이름8\n상병 이름9\n상병 이름10\n상병 이름11\n일병 이름12\n일병 이름13\n일병 이름14\n이병 이름15`.trim().split('\n');
+$('solM').value=2; $('solD').value=20;
 function solRun(){
-    let m=+solM.value, d=+solD.value, of=+solOF.value, v=solI.value, ans=[], W=0;
+    let m=+$('solM').value, d=+$('solD').value, of=+$('solOF').value, v=$('solI').value, ans=[], W=0;
     let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), target=new Date(Y,m-1,d).setHours(0,0,0,0);
-    let sic=getSic(m,d,solSW.checked), ca=Math.floor(Math.round((target-ep)/864e5)/5)*6+sic, sa=ca-of;
-    solINF.innerText=`[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`; solMSG.innerText=""; if(!v) return;
+    let s=getSic(m,d,$('solSW').checked), sa=Math.floor(Math.round((target-ep)/864e5)/5)*6+s-of;
+    $('solINF').innerText=`[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][s]}]`;
+    if(!v)return;
     let gD=a=>new Date(ep+(Math.floor(a/6)*5+[0,1,1,2,3,4][((a%6)+6)%6])*864e5), ls=v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
     SOL_LIST.forEach((sl,i)=>{
         let r=ls[i]; if(!r)return;
-        for(let j=0;j<r.length;j++){
-            let lv=r[j]; if(lv=="휴"||VM[lv]){
-                if(gD(sa+j).getTime()==target){
-                    let st=j, ed=j; while(st>0&&r[st-1]==lv)st--; while(ed<r.length-1&&r[ed+1]==lv)ed++; if(st==0||ed==r.length-1)W=1;
-                    let d1=gD(sa+st),d2=gD(sa+ed),vn=VM[lv]||lv,dt=d1.getTime()==d2.getTime()?`(${d1.getMonth()+1}.${d1.getDate()}.)`:`(${d1.getMonth()+1}.${d1.getDate()}.~${d1.getMonth()==d2.getMonth()?"":d2.getMonth()+1+"."}${d2.getDate()}.)`;
-                    ans.push(`${sl}<br><br>${lv=="휴"?"":`(${vn})<br><br>`}${dt}`); break;
-                }
-            }
+        for(let j=0;j<r.length;j++) if((r[j]=="휴"||VM[r[j]]) && gD(sa+j).getTime()==target){
+            let st=j, ed=j, lv=r[j]; while(st>0&&r[st-1]==lv)st--; while(ed<r.length-1&&r[ed+1]==lv)ed++;
+            if(st==0||ed==r.length-1)W=1;
+            ans.push(`${sl}<br><br>${lv=="휴"?"":`(${VM[lv]||lv})<br><br>`}${fmtDt(m,gD(sa+st).getDate(),gD(sa+ed).getDate())}`); break;
         }
     });
-    solO.innerHTML=`<table id='solT' border='1'><tr><td valign='top'>${ans.join("<br><br><br>")}</td></tr></table>`;
-    if(W)solMSG.innerText="⚠️ 짤림주의!"; qCopy('solO');
+    $('solO').innerHTML=`<table id='solT' border='1'><tr><td>${ans.join("<br><br>")}</td></tr></table>`;
+    $('solMSG').innerText=W?"⚠️ 짤림!":""; qCopy('solO');
 }
 
-/* --- 3. 간부휴가 Scraper 로직 --- */
-document.getElementById('offM').value=2; document.getElementById('offD').value=20;
-function offN(){
-    let sic=getSic(+offM.value,+offD.value,offSW.checked);
-    if(sic==1)offSW.checked=true; else{offSW.checked=false; let n=new Date(Y,+offM.value-1,+offD.value+1); offM.value=n.getMonth()+1; offD.value=n.getDate();} offRun();
-}
-function offP(){
-    let sic=getSic(+offM.value,+offD.value,offSW.checked);
-    if(sic==2)offSW.checked=false; else{if(sic==3)offSW.checked=true; else offSW.checked=false; let n=new Date(Y,+offM.value-1,+offD.value-1); offM.value=n.getMonth()+1; offD.value=n.getDate();} offRun();
-}
+/* 3. 간부휴가 Scraper */
+$('offM').value=2; $('offD').value=20;
 function offRun(){
-    let m=+offM.value, d=+offD.value, v=offI.value, t=0, b=0;
-    let R={1:{},2:{},3:{},4:{}}; for(let i=1;i<5;i++) R[i]={"사":[],"준":[],"부":[]};
-    let sic=getSic(m,d,offSW.checked); offINF.innerText=`[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`;
-    offMSG.innerText=""; if(!v)return;
-    let ls=v.split('\n').map(x=>x.split('\t').map(y=>y.trim())), targetCol=-1, lastH=null;
+    let m=+$('offM').value, d=+$('offD').value, v=$('offI').value, t=0, b=0;
+    let R={1:{사:[],준:[],부:[]},2:{사:[],준:[],부:[]},3:{사:[],준:[],부:[]},4:{사:[],준:[],부:[]}};
+    let s=getSic(m,d,$('offSW').checked); $('offINF').innerText=`[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][s]}]`;
+    if(!v)return;
+    let ls=v.split('\n').map(x=>x.split('\t').map(y=>y.trim())), tCol=-1, lastH=null;
     ls.forEach(L=>{
         if(L.some(c=>c==d.toString())){
             let idxs=L.map((c,i)=>c==d.toString()?i:-1).filter(i=>i!=-1);
-            targetCol=(idxs.length>1&&offSW.checked)?idxs[1]:idxs[0]; lastH=L; if(!b){t++;b=1;} return;
+            tCol=(idxs.length>1&&$('offSW').checked)?idxs[1]:idxs[0]; lastH=L; if(!b){t++;b=1;} return;
         }
         if(L.length<2||(!L[0]&&!L[1])){b=0; return;}
-        let r=L[0], n=L[1], k=""; if(r.includes("준위"))k="준"; else if(r.includes("위")||r.includes("령"))k="사"; else if(r.includes("사")||r.includes("원"))k="부";
-        if(!k||targetCol==-1||!lastH)return;
-        let lv=L[targetCol]; if(lv=="휴"||VM[lv]){
-            let st=targetCol, ed=targetCol; while(st>2&&L[st-1]==lv)st--; while(ed<L.length-1&&L[ed+1]==lv)ed++;
-            let d1=lastH[st]||d, d2=lastH[ed]||d, vn=VM[lv]||lv, dt=(d1==d2)?`(${m}.${d1}.)`:`(${m}.${d1}.~${d2}.)`;
-            R[t][k].push(`${r} ${n}<br><br>${lv=="휴"?"":`(${vn})<br><br>`}${dt}`);
+        let r=L[0], n=L[1], k=r.includes("준위")?"준":r.includes("위")||r.includes("령")?"사":r.includes("사")||r.includes("원")?"부":"";
+        if(!k||tCol==-1||!lastH)return;
+        let lv=L[tCol]; if(lv=="휴"||VM[lv]){
+            let st=tCol, ed=tCol; while(st>2&&L[st-1]==lv)st--; while(ed<L.length-1&&L[ed+1]==lv)ed++;
+            R[t][k].push(`${r} ${n}<br><br>${lv=="휴"?"":`(${VM[lv]||lv})<br><br>`}${fmtDt(m,lastH[st]||d,lastH[ed]||d)}`);
         }
     });
     let h="<table id='offT' border='1'><tr>";
-    for(let i=1;i<5;i++) ["사","준","부"].forEach(k=>h+=`<td valign='top'>${R[i][k].join("<br><br><br>")}</td>`);
-    offO.innerHTML=h+"</tr></table>"; qCopy('offO');
+    for(let i=1;i<5;i++) ["사","준","부"].forEach(k=>h+=`<td valign='top'>${R[i][k].join("<br><br>")}</td>`);
+    $('offO').innerHTML=h+"</tr></table>"; qCopy('offO');
 }
 </script>
 </body>
