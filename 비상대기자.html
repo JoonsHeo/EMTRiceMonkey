@@ -1,30 +1,37 @@
-<textarea id="I" cols="60" rows="4" placeholder="원본 복붙 (탭 포함)"></textarea><br>
+<h2 style="margin:5px 0;">비상대기자 Parser</h2>
+<textarea id="I" cols="60" rows="4" placeholder="원본 복붙 (탭으로 구분된 1시간/30분 인원)"></textarea><br>
 <button onclick="X()">변환 및 편성 🚀</button><br>
-1. 쉼표 (원래 줄바꿈 유지, 셀은 1개): <button onclick="C(O1)">표 복사</button><br>
-<div id="O1" style="background:#eee; padding:5px; margin-bottom:10px;"></div>
-2. 정렬 (1인당 1줄, 이름/시간 분리): <button onclick="C(O2)">표 복사</button><br>
-<div id="O2" style="background:#eee; padding:5px;"></div>
+
+1. 쉼표 (셀 1개에 통합): <button onclick="C(O1)">표 복사</button>
+<div id="O1" style="background:#eee; padding:5px; margin:5px 0 10px 0;"></div>
+
+2. 정렬 (이름/시간 분리): <button onclick="C(O2)">표 복사</button>
+<div id="O2" style="background:#eee; padding:5px; margin-top:5px;"></div>
 
 <script>
 let W="대위,대위(진),중위,중위(진),소위,소위(진),준위,원사,원사(진),상사,상사(진),중사,중사(진),하사,하사(진)".split(',');
 let w=s=>(i=W.indexOf(s.split(' ')[0]),i<0?99:i);
 let S=a=>a.sort((x,y)=>w(x.n)-w(y.n));
-let C=e=>{
+
+// 복사 기능 (알림이나 텍스트 변경 없이 순수 복사만 수행)
+let C=(e)=>{
     let s=getSelection(), r=document.createRange();
     r.selectNodeContents(e);
     s.removeAllRanges(); s.addRange(r);
     document.execCommand("copy");
-    s.removeAllRanges(); alert("표 복사완료!");
+    s.removeAllRanges();
 }
 
 function X(){
-    let v=I.value; if(!v)return;
+    // 인풋 데이터에서 큰따옴표(")를 모두 제거
+    let v=I.value.replace(/"/g, ""); if(!v)return;
     let L1=[], L2=[], A=[];
     v.split('\n').map(L=>{
         let P=L.split('\t'), p1=[], p2=[];
         if(P[0]){ p1=P[0].split('/').map(x=>x.trim()).filter(x=>x); if(p1.length) L1.push(p1.join(', ')); p1.map(x=>A.push({n:x,t:"1시간"})); }
         if(P[1]){ p2=P[1].split('/').map(x=>x.trim()).filter(x=>x); if(p2.length) L2.push(p2.join(', ')); p2.map(x=>A.push({n:x,t:"30분"})); }
     });
+    
     O1.innerHTML = `<table border='1'><tr><td>${L1.join('<br>')}</td>${L2.length?`<td>${L2.join('<br>')}</td>`:''}</tr></table>`;
     
     let g=(...i)=>S(i.map(x=>A[x]).filter(x=>x));
