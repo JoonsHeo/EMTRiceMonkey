@@ -1,0 +1,86 @@
+현재 기준 <input type="number" id="OF" value="5" style="width:40px">열 전부터 복붙<br>
+조회일: <input id="M" size="2">월 <input id="D" size="2">일
+<button onclick="X()">조회 🚀</button> <span id="INF" style="color:#27ae60;font-weight:bold;"></span><br>
+<textarea id="I" cols="60" rows="4" placeholder="이름/날짜 빼고 딱 '휴가 그리드'만 통째로 복붙"></textarea><br>
+<button onclick="C(O, this)">📋 표 복사</button> <span id="MSG" style="color:red;font-weight:bold;margin-left:10px;"></span>
+<div id="O" style="padding:5px; background:#eee; margin-top:5px;"></div>
+
+<script>
+// 👇 미드 기준일 (월, 일)
+let AM = 2, AD = 17; 
+
+// 👇 병사 명단 (복사할 엑셀 행 순서와 똑같이 위에서부터 작성)
+let SL = `
+병장 이름1
+병장 이름2
+병장 이름3
+병장 이름4
+병장 이름5
+병장 이름6
+상병 이름7
+상병 이름8
+상병 이름9
+상병 이름10
+상병 이름11
+일병 이름12
+일병 이름13
+일병 이름14
+이병 이름15
+`.trim().split('\n');
+
+// 팝업 없이 버튼 글자만 2초간 '✅ 복사완료'로 바뀌게 수정
+let C=(e,b)=>{let s=getSelection(), r=document.createRange(); r.selectNodeContents(e); s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); s.removeAllRanges(); b.innerText="✅ 복사됨!"; setTimeout(()=>b.innerText="📋 표 복사",2000);}
+
+let t=new Date(), Y=t.getFullYear();
+M.value=t.getMonth()+1; D.value=t.getDate();
+
+function X(){
+    let m=+M.value, d=+D.value, of=+OF.value, v=I.value, ans=[], W=0;
+    
+    let ep = new Date(Y, AM-1, AD-1).setHours(0,0,0,0);
+    let td = Math.floor((new Date(Y, t.getMonth(), t.getDate()).setHours(0,0,0,0) - ep)/864e5);
+    let cd = ((td%5)+5)%5, sic = cd==0?0 : cd==1?(t.getHours()<12?1:2) : cd+1;
+    let ca = Math.floor(td/5)*6 + sic, sa = ca - of; 
+    
+    INF.innerText = `[${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`;
+    MSG.innerText = ""; // 켤 때마다 경고창 초기화
+    if(!v) return;
+    
+    let gD = a => new Date(ep + (Math.floor(a/6)*5 + [0,1,1,2,3,4][((a%6)+6)%6])*864e5);
+    let V = ["휴","포휴","연가","공가","위로","외박","보상"];
+    
+    // 엑셀 칸 데이터 배열화
+    let ls = v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
+    
+    // 명단(SL)의 i번째 사람 = 엑셀(ls)의 i번째 줄
+    SL.forEach((sl, i) => {
+        let r = ls[i]; 
+        if(!r) return;
+        let dl = r.length;
+        
+        for(let j=0; j<dl; j++){
+            let lv = r[j];
+            if(V.includes(lv)){
+                let cd_date = gD(sa+j);
+                if(cd_date.getMonth()+1 == m && cd_date.getDate() == d){
+                    let st=j, ed=j;
+                    while(st>0 && r[st-1]==lv) st--;
+                    while(ed<dl-1 && r[ed+1]==lv) ed++;
+                    
+                    if(st==0 || ed==dl-1) W=1; // 경고 플래그
+                    
+                    let d1 = gD(sa+st), d2 = gD(sa+ed);
+                    let dt = d1.getTime()==d2.getTime() ? `(${d1.getMonth()+1}.${d1.getDate()}.)` : `(${d1.getMonth()+1}.${d1.getDate()}.~${d1.getMonth()==d2.getMonth()?"":d2.getMonth()+1+"."}${d2.getDate()}.)`;
+                    ans.push(`${sl}<br><br>${lv=="휴"?"":`(${lv})<br><br>`}${dt}`);
+                    break;
+                }
+            }
+        }
+    });
+    
+    O.innerHTML = `<table border='1'><tr><td valign='top'>${ans.join("<br><br><br>")}</td></tr></table>`;
+    // 팝업 대신 버튼 옆에 빨간 글씨로 경고 출력
+    if(W) MSG.innerText = "⚠️ 짤린 일정 확인!"; 
+}
+X();
+</script>
