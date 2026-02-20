@@ -1,47 +1,76 @@
-<input id="M" size="2">월 <input id="D" size="2">일
-<button onclick="X()">조회+복사</button><br>
-<textarea id="I" cols="80" rows="10"></textarea>
-<div id="O"></div>
+<h2 style="margin:5px 0;">간부휴가 Scraper</h2>
+조회일: <input id="M" size="2">월 <input id="D" size="2">일 
+<label><input type="checkbox" id="SW"> 조회일이 스윙☑️</label>
+<button onclick="P()">⏪ 이전</button>
+<button onclick="X()">조회+복사 🚀</button> 
+<button onclick="N()">다음 ⏩</button><br>
+<span id="INF" style="color:#27ae60;font-weight:bold;"></span>
+<span id="MSG" style="color:red;font-weight:bold;margin-left:5px;"></span><br>
+<textarea id="I" cols="80" rows="10" placeholder="날짜 헤더를 포함하여 팀별 데이터를 통째로 복붙하세요"></textarea>
+<div id="O" style="margin-top:5px; background:#eee; padding:5px;"></div>
+
 <script>
-M.value=new Date().getMonth()+1; D.value=new Date().getDate();
+let AM = 2, AD = 17; // 기준 미드일
+let VM = { "포상":"포상휴가", "보상":"보상휴가", "위로":"위로휴가", "포휴":"포상휴가", "연가":"연가", "공가":"공가", "외박":"외박" };
+let Y = new Date().getFullYear(); M.value = new Date().getMonth()+1; D.value = new Date().getDate();
+
+// 근무 주기 계산 (sic: 0:MOR, 1:MID, 2:SWI, 3:AFT, 4:BRK, 5:BRK)
+function G(m, d, sw) {
+    let ep=new Date(Y,AM-1,AD-1).setHours(0,0,0,0), td=Math.round((new Date(Y,m-1,d).setHours(0,0,0,0)-ep)/864e5);
+    let cd=((td%5)+5)%5; return cd==0?0:cd==1?(sw?2:1):cd+1;
+}
+function N(){ let sic=G(+M.value,+D.value,SW.checked); if(sic==1)SW.checked=true; else {SW.checked=false; let n=new Date(Y,+M.value-1,+D.value+1); M.value=n.getMonth()+1; D.value=n.getDate();} X(); }
+function P(){ let sic=G(+M.value,+D.value,SW.checked); if(sic==2)SW.checked=false; else {if(sic==3)SW.checked=true; else SW.checked=false; let n=new Date(Y,+M.value-1,+D.value-1); M.value=n.getMonth()+1; D.value=n.getDate();} X(); }
+
 function X(){
-    let m=M.value, d=+D.value, t=0, b=0, v=["휴","포휴","연가","공가","위로"];
-    let R={1:{},2:{},3:{},4:{}};
-    for(let i=1;i<5;i++) R[i]={"사":[],"준":[],"부":[]};
-    
-    I.value.split('\n').forEach(L=>{
-        let c=L.split('\t').map(x=>x.trim());
-        if(c.length<2) return;
-        let r=c[0], n=c[1], k="";
-        
-        if(r.includes("준위")) k="준";
-        else if(r.includes("위")) k="사";
-        else if(r.includes("사")) k="부";
-        
-        if(!k){ b=0; return; }
-        if(!b){ t++; b=1; }
-        if(t>4) return;
-        
-        let lv=c[d+1];
-        if(v.includes(lv)){
-            let S=d, E=d;
-            for(let x=d-1; x>0 && c[x+1]==lv; x--) S=x;
-            for(let x=d+1; x<32 && c[x+1]==lv; x++) E=x;
-            let dt = S==E ? `(${m}.${S}.)` : `(${m}.${S}.~${E}.)`;
-            R[t][k].push(`${r} ${n}<br><br>`+(lv=="휴"?"":`(${lv})<br><br>`)+dt);
+    let m=+M.value, d=+D.value, v=I.value, ans=[], t=0, b=0;
+    let R={1:{},2:{},3:{},4:{}}; for(let i=1;i<5;i++) R[i]={"사":[],"준":[],"부":[]};
+    let sic = G(m, d, SW.checked);
+    INF.innerText = `[${m}.${d}. ${["MOR","MID","SWI","AFT","BRK","BRK"][sic]} 기준]`;
+    MSG.innerText = ""; if(!v) return;
+
+    let ls = v.split('\n').map(x=>x.split('\t').map(y=>y.trim()));
+    let targetCol = -1;
+
+    ls.forEach(L => {
+        // 1. 헤더 행 인식 (날짜 숫자가 있는지 확인)
+        let isHeader = L.some(c => c == d.toString());
+        if(isHeader) {
+            // 해당 날짜(d)가 적힌 열 인덱스들 찾기
+            let idxs = L.map((c,i) => c==d.toString() ? i : -1).filter(i => i != -1);
+            if(idxs.length > 1) targetCol = SW.checked ? idxs[1] : idxs[0]; // MID/SWI 구분
+            else targetCol = idxs[0];
+            
+            if(!b) { t++; b=1; } // 새로운 팀 시작 인식
+            return;
+        }
+
+        // 2. 인원 데이터 처리
+        if(L.length < 2 || (!L[0] && !L[1])) { b=0; return; } // 빈 줄이면 팀 구분 준비
+        let r=L[0], n=L[1], k="";
+        if(r.includes("준위")) k="준"; else if(r.includes("위")||r.includes("령")) k="사"; else if(r.includes("사")||r.includes("원")) k="부";
+        if(!k || targetCol == -1) return;
+
+        let lv = L[targetCol];
+        if(lv=="휴" || VM[lv]){
+            // 기간 계산을 위한 날짜 추적 (단순화: 엑셀 좌우 칸이 같은 휴가인지 체크)
+            let st=targetCol, ed=targetCol;
+            while(st>2 && L[st-1]==lv) st--; while(ed<L.length-1 && L[ed+1]==lv) ed++;
+            
+            // 날짜 텍스트 생성 (헤더 행에서 날짜 숫자를 가져옴)
+            // 실제 달력 헤더가 있는 행을 다시 찾아 날짜 계산 (현재 행 기준 가장 가까운 위쪽 헤더 사용)
+            let hL = ls.slice(0, ls.indexOf(L)).reverse().find(row => row.some(c => c != "" && !isNaN(c)));
+            let d1 = hL ? hL[st] : d, d2 = hL ? hL[ed] : d;
+            let vn = VM[lv] || lv;
+            let dt = d1 == d2 ? `(${m}.${d1}.)` : `(${m}.${d1}.~${d2}.)`;
+            R[t][k].push(`${r} ${n}<br><br>${lv=="휴"?"":`(${vn})<br><br>`}${dt}`);
         }
     });
-    
+
     let h="<table id='T' border='1'><tr>";
-    for(let i=1;i<5;i++) ["사","준","부"].forEach(k=>{
-        h+=`<td valign='top'>${R[i][k].join("<br><br><br>")}</td>`;
-    });
+    for(let i=1;i<5;i++) ["사","준","부"].forEach(k=> h+=`<td valign='top'>${R[i][k].join("<br><br><br>")}</td>`);
     O.innerHTML = h+"</tr></table>";
     
-    let s=getSelection(), rg=document.createRange();
-    rg.selectNodeContents(T);
-    s.removeAllRanges(); s.addRange(rg);
-    document.execCommand("copy");
-    alert("복사완료! 엑셀 1열에 붙여넣으세요.");
+    let s=getSelection(), rg=document.createRange(); rg.selectNodeContents(T); s.removeAllRanges(); s.addRange(rg); document.execCommand("copy"); s.removeAllRanges();
 }
 </script>
