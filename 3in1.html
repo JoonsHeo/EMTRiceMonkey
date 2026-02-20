@@ -18,7 +18,7 @@
 
 <div class="section">
     <h2>비상대기자 Parser</h2>
-    <textarea id="parseI" rows="3" placeholder="탭 구분 1시간/30분 인원"></textarea>
+    <textarea id="parseI" rows="3" placeholder="탭 구분 1시간/30분 인원" oninput="parseRun()"></textarea>
     <button onclick="parseRun()">변환 🚀</button> | 
     <button onclick="qCopy('parseO1')">쉼표 복사</button>
     <button onclick="qCopy('parseO2')">정렬 복사</button>
@@ -34,7 +34,7 @@
     <button onclick="move(1,'sol')">다음 ⏩</button>
     <span id="solINF" style="color:#27ae60;font-weight:bold;margin-left:10px;"></span>
     <span id="solMSG" style="color:red;font-weight:bold;"></span>
-    <textarea id="solI" rows="3" placeholder="딱 '휴가 그리드'만 복붙"></textarea>
+    <textarea id="solI" rows="3" placeholder="딱 '휴가 그리드'만 복붙" oninput="solRun()"></textarea>
     <div id="solO" class="res-box"></div>
 </div>
 
@@ -45,7 +45,7 @@
     <button onclick="offRun()">조회+복사 🚀</button> 
     <button onclick="move(1,'off')">다음 ⏩</button>
     <span id="offINF" style="color:#27ae60;font-weight:bold;margin-left:10px;"></span>
-    <textarea id="offI" rows="6" placeholder="날짜 헤더 포함 팀별 데이터 복붙"></textarea>
+    <textarea id="offI" rows="6" placeholder="날짜 헤더 포함 팀별 데이터 복붙" oninput="offRun()"></textarea>
     <div id="offO" class="res-box"></div>
 </div>
 
@@ -101,21 +101,51 @@ function move(step, p){
     window[p+'Run'](); // 이동 후 자동으로 조회 실행
 }
 
-/* --- 1. 비상대기자 Parser 로직 --- */
+/* --- 1. 비상대기자 Parser 로직 (팀 우선순위 수정) --- */
 const W_List="대위,대위(진),중위,중위(진),소위,소위(진),준위,원사,원사(진),상사,상사(진),중사,중사(진),하사,하사(진)".split(',');
+const getW=s=>{let i=W_List.indexOf(s.split(' ')[0]); return i<0?99:i;};
+
 function parseRun(){
-    let v=$('parseI').value.replace(/"/g,""); if(!v)return; // 엑셀에서 딸려오는 따옴표 제거
+    let v=$('parseI').value.replace(/"/g,""); if(!v)return;
     let L1=[], L2=[], A=[];
+    
+    // 인풋 데이터를 줄단위 -> 탭단위로 분리하여 A 어레이에 8명 순차 저장
     v.split('\n').map(L=>{
-        let P=L.split('\t'); // 탭으로 1시간/30분 구분
-        const f=s=>s.split('/').map(x=>x.trim()).filter(x=>x); // 이름 사이 '/' 기준으로 분리
-        if(P[0]){ let p1=f(P[0]); L1.push(p1.join(', ')); p1.map(x=>A.push({n:x,t:"1시간"})); }
-        if(P[1]){ let p2=f(P[1]); L2.push(p2.join(', ')); p2.map(x=>A.push({n:x,t:"30분"})); }
+        let P=L.split('\t');
+        const f=s=>s.split('/').map(x=>x.trim()).filter(x=>x);
+        if(P[0]){ f(P[0]).map(x=>A.push({n:x,t:"1시간"})); }
+        if(P[1]){ f(P[1]).map(x=>A.push({n:x,t:"30분"})); }
     });
-    // 결과 1 (쉼표 나열) 출력
+
+    // 출력 1용 (쉼표 나열 - 원래 줄바꿈 기준 유지)
+    // 인풋의 형태를 보고 L1, L2에 쉼표로 합쳐서 넣어주는 로직
+    let rawLines = v.split('\n');
+    rawLines.map(L => {
+        let P=L.split('\t');
+        if(P[0]) L1.push(P[0].split('/').map(x=>x.trim()).filter(x=>x).join(', '));
+        if(P[1]) L2.push(P[1].split('/').map(x=>x.trim()).filter(x=>x).join(', '));
+    });
     $('parseO1').innerHTML=`<table border='1'><tr><td>${L1.join('<br>')}</td>${L2.length?`<td>${L2.join('<br>')}</td>`:''}</tr></table>`;
-    // 결과 2 (서열 정렬) 출력
-    let F=A.sort((a,b)=>W_List.indexOf(a.n.split(' ')[0])-W_List.indexOf(b.n.split(' ')[0]));
+
+    // 출력 2용 (팀별 정렬 - 1인당 1줄)
+    // g함수: 인덱스를 받아서 해당 인원들을 서열순 정렬해 반환
+    let g=(...indices)=>indices.map(i=>A[i]).filter(x=>x).sort((a,b)=>getW(a.n)-getW(b.n));
+
+    /**
+     * 팀 배치 로직 (사용자 요청 반영)
+     * 인덱스 기준: 0(1), 1(2), 2(3), 3(4), 4(5), 5(6), 6(7), 7(8)
+     * 팀 1: 1, 2, 6 (0, 1, 5)
+     * 팀 2: 3, 7 (2, 6)
+     * 팀 3: 4, 8 (3, 7)
+     * 팀 4: 5 (4)
+     */
+    let F=[
+        ...g(0, 1, 5), // 팀 1
+        ...g(2, 6),    // 팀 2
+        ...g(3, 7),    // 팀 3
+        ...g(4)        // 팀 4
+    ];
+
     $('parseO2').innerHTML=`<table border='1'>${F.map(x=>`<tr><td>${x.n}</td><td>${x.t}</td></tr>`).join('')}</table>`;
 }
 
